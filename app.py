@@ -2,7 +2,7 @@ from flask import Flask, request, abort
 from linebot import LineBotApi, WebhookHandler
 from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
-import openai
+from openai import OpenAI
 import os
 
 app = Flask(__name__)
@@ -12,7 +12,7 @@ line_bot_api = LineBotApi(os.environ['CHANNEL_ACCESS_TOKEN'])
 handler = WebhookHandler(os.environ['CHANNEL_SECRET'])
 
 # OpenAI API setup
-openai.api_key = os.environ['OPENAI_API_KEY']
+API_KEY = os.environ['OPENAI_API_KEY']
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -30,13 +30,21 @@ def handle_message(event):
     user_message = event.message.text
     
     try:
-        # Generate response using OpenAI
-        response = openai.Completion.create(
-            engine="text-davinci-003",  # You can choose different models
-            prompt=user_message,
-            max_tokens=150  # Adjust as needed
+        client = OpenAI(
+            # This is the default and can be omitted
+            api_key=API_KEY,
         )
-        ai_message = response.choices[0].text.strip()
+        chat_completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "user",
+                    "content": user_message,
+                }
+            ],
+            model="gpt-3.5-turbo",
+        )
+        ai_message = chat_completion.choices[0].message.content
+
     except Exception as e:
         app.logger.error(f"OpenAI API request failed: {e}")
         ai_message = "Sorry, I couldn't process your request."
