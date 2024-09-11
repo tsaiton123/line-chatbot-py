@@ -41,7 +41,7 @@ def handle_message(event):
                     "content": user_message,
                 }
             ],
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
         )
         ai_message = chat_completion.choices[0].message.content
 
