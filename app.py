@@ -4,7 +4,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
 from openai import OpenAI
 import os
-from search import google_search    
+from search import google_search , should_search
 
 app = Flask(__name__)
 
@@ -17,18 +17,6 @@ API_KEY = os.environ['OPENAI_API_KEY']
 GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 SEARCH_ENGINE_ID = os.environ['SEARCH_ENGINE_ID']
 
-def should_search(query, client):
-    response = client.chat.completions.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a helpful assistant. Determine whether the following question requires an online search for up-to-date information or not."},
-            {"role": "user", "content": query}
-        ]
-    )
-    
-    # Get the decision from GPT
-    decision = response.choices[0].message.content
-    return decision.lower()
 
 @app.route("/callback", methods=['POST'])
 def callback():

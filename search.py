@@ -14,3 +14,16 @@ def google_search(query, api_key, search_engine_id):
         return response.json()
     else:
         raise Exception(f"Error: {response.status_code}, {response.text}")
+    
+def should_search(query, client):
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant. Determine whether the following question requires an online search for up-to-date information or not."},
+            {"role": "user", "content": query}
+        ]
+    )
+    
+    # Get the decision from GPT
+    decision = response.choices[0].message.content
+    return decision.lower()
