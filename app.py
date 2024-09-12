@@ -49,7 +49,7 @@ def handle_message(event):
 
         # Feed the formatted results into the GPT model
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant that summarizes search results."},
                 {"role": "user", "content": f"Here are the Google search results for the query '{user_message}':\n\n{formatted_results}"},
