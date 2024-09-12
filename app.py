@@ -4,6 +4,7 @@ from linebot.exceptions import InvalidSignatureError
 from linebot.models import *
 from openai import OpenAI
 import os
+from search import google_search    
 
 app = Flask(__name__)
 
@@ -13,6 +14,8 @@ handler = WebhookHandler(os.environ['CHANNEL_SECRET'])
 
 # OpenAI API setup
 API_KEY = os.environ['OPENAI_API_KEY']
+GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
+SEARCH_ENGINE_ID = os.environ['SEARCH_ENGINE_ID']
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -34,16 +37,26 @@ def handle_message(event):
             # This is the default and can be omitted
             api_key=API_KEY,
         )
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": user_message,
-                }
-            ],
+        # Search Google for the user's query
+        search_results = google_search(user_message, GOOGLE_API_KEY, SEARCH_ENGINE_ID)
+        # Extract relevant data (title, link, snippet) from the search results
+        formatted_results = ""
+        for item in search_results.get('items', []):
+            title = item['title']
+            link = item['link']
+            snippet = item['snippet']
+            formatted_results += f"Title: {title}\nLink: {link}\nSnippet: {snippet}\n\n"
+
+        # Feed the formatted results into the GPT model
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that summarizes search results."},
+                {"role": "user", "content": f"Here are the Google search results for the query '{user_message}':\n\n{formatted_results}"},
+                {"role": "user", "content": "Can you summarize these search results for me?"}
+            ]
         )
-        ai_message = chat_completion.choices[0].message.content
+        ai_message = response.choices[0].message.content
 
     except Exception as e:
         app.logger.error(f"OpenAI API request failed: {e}")
