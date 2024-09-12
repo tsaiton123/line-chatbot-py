@@ -57,11 +57,12 @@ def handle_message(event):
             response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that provides information."},
+                # {"role": "system", "content": "You are a helpful assistant that provides information."},
+                {"role": "user", "content": user_message}
             ]
             )
             ai_message = response.choices[0].message.content
-            
+
         else:
         
             # Search Google for the user's query
