@@ -17,6 +17,19 @@ API_KEY = os.environ['OPENAI_API_KEY']
 GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 SEARCH_ENGINE_ID = os.environ['SEARCH_ENGINE_ID']
 
+def should_search(query, client):
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant. Determine whether the following question requires an online search for up-to-date information or not."},
+            {"role": "user", "content": query}
+        ]
+    )
+    
+    # Get the decision from GPT
+    decision = response.choices[0].message.content
+    return decision.lower()
+
 @app.route("/callback", methods=['POST'])
 def callback():
     signature = request.headers['X-Line-Signature']
@@ -37,26 +50,40 @@ def handle_message(event):
             # This is the default and can be omitted
             api_key=API_KEY,
         )
-        # Search Google for the user's query
-        search_results = google_search(user_message, GOOGLE_API_KEY, SEARCH_ENGINE_ID)
-        # Extract relevant data (title, link, snippet) from the search results
-        formatted_results = ""
-        for item in search_results.get('items', []):
-            title = item['title']
-            link = item['link']
-            snippet = item['snippet']
-            formatted_results += f"Title: {title}\nLink: {link}\nSnippet: {snippet}\n\n"
+        # Check if the query requires an online search
+        decision = should_search(user_message, client)
 
-        # Feed the formatted results into the GPT model
-        response = client.chat.completions.create(
+        if 'yes' not in decision:
+            response = client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that summarizes search results."},
-                {"role": "user", "content": f"Here are the Google search results for the query '{user_message}':\n\n{formatted_results}"},
-                {"role": "user", "content": "Can you summarize these search results for me?"}
+                {"role": "system", "content": "You are a helpful assistant that provides information."},
             ]
-        )
-        ai_message = response.choices[0].message.content
+            )
+            ai_message = response.choices[0].message.content
+            
+        else:
+        
+            # Search Google for the user's query
+            search_results = google_search(user_message, GOOGLE_API_KEY, SEARCH_ENGINE_ID)
+            # Extract relevant data (title, link, snippet) from the search results
+            formatted_results = ""
+            for item in search_results.get('items', []):
+                title = item['title']
+                link = item['link']
+                snippet = item['snippet']
+                formatted_results += f"Title: {title}\nLink: {link}\nSnippet: {snippet}\n\n"
+
+            # Feed the formatted results into the GPT model
+            response = client.chat.completions.create(
+                model="gpt-4",
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that summarizes search results."},
+                    {"role": "user", "content": f"Here are the Google search results for the query '{user_message}':\n\n{formatted_results}"},
+                    {"role": "user", "content": "Can you summarize these search results for me?"}
+                ]
+            )
+            ai_message = response.choices[0].message.content
 
     except Exception as e:
         app.logger.error(f"OpenAI API request failed: {e}")
