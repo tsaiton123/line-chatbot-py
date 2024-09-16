@@ -32,6 +32,7 @@ def callback():
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
+    user_id = event.source.user_id
     
     try:
         client = OpenAI(
@@ -81,6 +82,7 @@ def handle_message(event):
     # Send AI-generated message back to user
     message = TextSendMessage(text=ai_message)
     line_bot_api.reply_message(event.reply_token, message)
+    line_bot_api.push_message(user_id, message)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
