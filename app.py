@@ -33,6 +33,7 @@ def callback():
 def handle_message(event):
     user_message = event.message.text
     user_id = event.source.user_id
+    user_name = line_bot_api.get_profile(user_id).display_name
     
     try:
         client = OpenAI(
@@ -77,7 +78,7 @@ def handle_message(event):
 
     except Exception as e:
         app.logger.error(f"OpenAI API request failed: {e}")
-        ai_message = f"Sorry, I couldn't process your request{user_id}."
+        ai_message = f"Sorry, I couldn't process your request{user_name}."
 
     # Send AI-generated message back to user
     message = TextSendMessage(text=ai_message)
