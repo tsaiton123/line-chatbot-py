@@ -29,6 +29,17 @@ def callback():
         abort(400)
     return 'OK'
 
+@handler.add(FollowEvent)
+def handle_follow(event):
+    user_id = event.source.user_id  # Get the user's ID when they add the bot
+    user_name = line_bot_api.get_profile(user_id).display_name
+    app.logger.info(f"New follower: {user_id}")
+
+    # You can send a welcome message to the user or save the user_id in your database
+    welcome_message = TextSendMessage(text=f"Thank you for adding me as a friend!{user_name}")
+    line_bot_api.push_message(user_id, welcome_message)
+
+
 @handler.add(MessageEvent, message=TextMessage)
 def handle_message(event):
     user_message = event.message.text
@@ -78,7 +89,7 @@ def handle_message(event):
 
     except Exception as e:
         app.logger.error(f"OpenAI API request failed: {e}")
-        ai_message = f"Sorry, I couldn't process your request{user_name}."
+        ai_message = f"Sorry, I couldn't process your request, {user_name}."
 
     # Send AI-generated message back to user
     message = TextSendMessage(text=ai_message)
