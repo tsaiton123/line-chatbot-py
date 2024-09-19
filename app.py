@@ -154,9 +154,9 @@ def handle_image_message(event):
         for chunk in message_content.iter_content():
             fd.write(chunk)
     
-    # Serve the image back to the user via the Flask route
-    image_url = f"{request.url_root}image/{message_id}"
-    
+    # Ensure the URL is HTTPS
+    image_url = f"https://{request.host}/image/{message_id}"
+
     image_message = ImageSendMessage(
         original_content_url=image_url,
         preview_image_url=image_url
@@ -164,6 +164,7 @@ def handle_image_message(event):
     
     # Send the image back to the user
     line_bot_api.reply_message(event.reply_token, image_message)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
