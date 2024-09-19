@@ -135,7 +135,7 @@ def handle_image_message(event):
     message_content = line_bot_api.get_message_content(message_id)
     
     # Save the image temporarily (in memory or local storage)
-    temp_image_path = f"/tmp/{message_id}.jpg"  # Temporary path
+    temp_image_path = f"static/{message_id}.jpg"  # Temporary path
     
     with open(temp_image_path, 'wb') as fd:
         for chunk in message_content.iter_content():
@@ -151,7 +151,7 @@ def handle_image_message(event):
     line_bot_api.reply_message(event.reply_token, image_message)
 
     # Optionally, you can clean up the saved image after sending it
-    # os.remove(temp_image_path)
+    os.remove(temp_image_path)
 
 
 if __name__ == "__main__":
