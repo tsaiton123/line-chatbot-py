@@ -148,16 +148,16 @@ def handle_image_message(event):
         app.logger.error(f"Failed to save the image: {e}")
         return
 
-    try:
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"Image saved at {temp_image_path}"))
-    except Exception as e:
-        app.logger.error(f"Failed to send confirmation message: {e}")
+    # try:
+    #     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"Image saved at {temp_image_path}"))
+    # except Exception as e:
+    #     app.logger.error(f"Failed to send confirmation message: {e}")
 
     # send back the image
-    # try:
-    #     line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=temp_image_path, preview_image_url=temp_image_path))
-    # except Exception as e:
-    #     app.logger.error(f"Failed to send the image: {e}")
+    try:
+        line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=temp_image_path, preview_image_url=temp_image_path))
+    except Exception as e:
+        app.logger.error(f"Failed to send the image: {e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
