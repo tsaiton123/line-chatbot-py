@@ -128,37 +128,30 @@ def handle_message(event):
 
 @handler.add(MessageEvent, message=ImageMessage)
 def handle_image_message(event):
-    # Get the message ID of the image sent by the user
     message_id = event.message.id
-    
-    # Download the image from LINE servers
-    message_content = line_bot_api.get_message_content(message_id)
-    
-    # Save the image temporarily (in memory or local storage)
-    temp_image_path = f"static/{message_id}.jpg"  # Temporary path
 
-
-    # line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
+    # Retrieve the message content
+    try:
+        message_content = line_bot_api.get_message_content(message_id)
+    except Exception as e:
+        app.logger.error(f"Failed to retrieve message content: {e}")
+        return
     
-    with open(temp_image_path, 'wb') as fd:
-        for chunk in message_content.iter_content():
-            fd.write(chunk)
-
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
-    
-    # Respond to the user with the same image
-    image_message = ImageSendMessage(
-        original_content_url=f"{request.url_root}static/{message_id}.jpg",
-        preview_image_url=f"{request.url_root}static/{message_id}.jpg"
-    )
-    
-    # Send the image back to the user
-    # line_bot_api.reply_message(event.reply_token, image_message)
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
-
-
-    # Optionally, you can clean up the saved image after sending it
-    os.remove(temp_image_path)
+    # Try writing the image directly without chunking
+    temp_image_path = f"/tmp/{message_id}.jpg"
+    try:
+        with open(temp_image_path, 'wb') as fd:
+            fd.write(message_content.content)  # Write content directly without chunking
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="Image received!"))
+        app.logger.info(f"Image saved at {temp_image_path}")
+    except Exception as e:
+        line_bot_api.reply_message(
+            event.reply_token,
+            TextSendMessage(text="Failed to save the image."))
+        app.logger.error(f"Failed to save the image: {e}")
+        return
 
 
 if __name__ == "__main__":
