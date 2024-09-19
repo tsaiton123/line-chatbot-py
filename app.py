@@ -142,17 +142,22 @@ def handle_image_message(event):
     try:
         with open(temp_image_path, 'wb') as fd:
             fd.write(message_content.content)  # Write content directly without chunking
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="Image received!"))
+
         app.logger.info(f"Image saved at {temp_image_path}")
     except Exception as e:
-        line_bot_api.reply_message(
-            event.reply_token,
-            TextSendMessage(text="Failed to save the image."))
         app.logger.error(f"Failed to save the image: {e}")
         return
 
+    try:
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"Image saved at {temp_image_path}"))
+    except Exception as e:
+        app.logger.error(f"Failed to send confirmation message: {e}")
+
+    # send back the image
+    # try:
+    #     line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=temp_image_path, preview_image_url=temp_image_path))
+    # except Exception as e:
+    #     app.logger.error(f"Failed to send the image: {e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
