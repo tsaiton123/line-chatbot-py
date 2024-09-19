@@ -5,6 +5,7 @@ from linebot.models import *
 from openai import OpenAI
 import os
 from search import google_search , should_search
+import sqlite3
 
 app = Flask(__name__)
 
@@ -17,6 +18,24 @@ API_KEY = os.environ['OPENAI_API_KEY']
 GOOGLE_API_KEY = os.environ['GOOGLE_API_KEY']
 SEARCH_ENGINE_ID = os.environ['SEARCH_ENGINE_ID']
 
+# Connect to your database
+DATABASE = 'line_bot_users.db'
+
+def create_connection():
+    conn = sqlite3.connect(DATABASE)
+    return conn
+
+def save_user_to_db(user_id, username):
+    conn = create_connection()
+    cursor = conn.cursor()
+    try:
+        # Insert user_id and username into the database
+        cursor.execute("INSERT OR IGNORE INTO users (user_id, username) VALUES (?, ?)", (user_id, username))
+        conn.commit()
+    except Exception as e:
+        app.logger.error(f"Failed to insert user: {e}")
+    finally:
+        conn.close()
 
 @app.route("/callback", methods=['POST'])
 def callback():
@@ -32,12 +51,22 @@ def callback():
 @handler.add(FollowEvent)
 def handle_follow(event):
     user_id = event.source.user_id  # Get the user's ID when they add the bot
-    user_name = line_bot_api.get_profile(user_id).display_name
     app.logger.info(f"New follower: {user_id}")
 
-    # You can send a welcome message to the user or save the user_id in your database
-    welcome_message = TextSendMessage(text=f"Thank you for adding me as a friend!{user_name}")
-    line_bot_api.push_message(user_id, welcome_message)
+    try:
+        # Fetch the user's profile to get their display name (username)
+        profile = line_bot_api.get_profile(user_id)
+        username = profile.display_name
+
+        # Save user_id and username to the database
+        save_user_to_db(user_id, username)
+
+        # Send a welcome message to the user
+        welcome_message = TextSendMessage(text=f"Thank you for adding me, {username}!")
+        line_bot_api.push_message(user_id, welcome_message)
+    
+    except Exception as e:
+        app.logger.error(f"Error fetching user profile: {e}")
 
 
 @handler.add(MessageEvent, message=TextMessage)
