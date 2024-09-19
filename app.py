@@ -138,7 +138,7 @@ def handle_image_message(event):
     temp_image_path = f"static/{message_id}.jpg"  # Temporary path
 
 
-    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
+    # line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
     
     with open(temp_image_path, 'wb') as fd:
         for chunk in message_content.iter_content():
