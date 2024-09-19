@@ -125,6 +125,35 @@ def handle_message(event):
     line_bot_api.reply_message(event.reply_token, message)
     # line_bot_api.push_message(user_id, message)
 
+
+@handler.add(MessageEvent, message=ImageMessage)
+def handle_image_message(event):
+    # Get the message ID of the image sent by the user
+    message_id = event.message.id
+    
+    # Download the image from LINE servers
+    message_content = line_bot_api.get_message_content(message_id)
+    
+    # Save the image temporarily (in memory or local storage)
+    temp_image_path = f"/tmp/{message_id}.jpg"  # Temporary path
+    
+    with open(temp_image_path, 'wb') as fd:
+        for chunk in message_content.iter_content():
+            fd.write(chunk)
+    
+    # Respond to the user with the same image
+    image_message = ImageSendMessage(
+        original_content_url=f"{request.url_root}static/{message_id}.jpg",
+        preview_image_url=f"{request.url_root}static/{message_id}.jpg"
+    )
+    
+    # Send the image back to the user
+    line_bot_api.reply_message(event.reply_token, image_message)
+
+    # Optionally, you can clean up the saved image after sending it
+    # os.remove(temp_image_path)
+
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
