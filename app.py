@@ -148,7 +148,9 @@ def handle_image_message(event):
     )
     
     # Send the image back to the user
-    line_bot_api.reply_message(event.reply_token, image_message)
+    # line_bot_api.reply_message(event.reply_token, image_message)
+    line_bot_api.reply_message(event.reply_token, TextSendMessage(text="Image received"))
+
 
     # Optionally, you can clean up the saved image after sending it
     os.remove(temp_image_path)
