@@ -6,6 +6,8 @@ from openai import OpenAI
 import os
 from search import google_search , should_search
 import sqlite3
+from flask import send_file
+
 
 app = Flask(__name__)
 
@@ -47,6 +49,19 @@ def callback():
     except InvalidSignatureError:
         abort(400)
     return 'OK'
+
+
+@app.route('/image/<image_id>', methods=['GET'])
+def serve_image(image_id):
+    # Path to the image in the /tmp directory
+    image_path = f"/tmp/{image_id}.jpg"
+    
+    try:
+        return send_file(image_path, mimetype='image/jpeg')
+    except Exception as e:
+        app.logger.error(f"Failed to serve image: {e}")
+        return "Image not found", 404
+
 
 @handler.add(FollowEvent)
 def handle_follow(event):
@@ -130,34 +145,25 @@ def handle_message(event):
 def handle_image_message(event):
     message_id = event.message.id
 
-    # Retrieve the message content
-    try:
-        message_content = line_bot_api.get_message_content(message_id)
-    except Exception as e:
-        app.logger.error(f"Failed to retrieve message content: {e}")
-        return
+    # Download the image from LINE servers
+    message_content = line_bot_api.get_message_content(message_id)
     
-    # Try writing the image directly without chunking
+    # Save the image to the /tmp directory
     temp_image_path = f"/tmp/{message_id}.jpg"
-    try:
-        with open(temp_image_path, 'wb') as fd:
-            fd.write(message_content.content)  # Write content directly without chunking
-
-        app.logger.info(f"Image saved at {temp_image_path}")
-    except Exception as e:
-        app.logger.error(f"Failed to save the image: {e}")
-        return
-
-    # try:
-    #     line_bot_api.reply_message(event.reply_token, TextSendMessage(text=f"Image saved at {temp_image_path}"))
-    # except Exception as e:
-    #     app.logger.error(f"Failed to send confirmation message: {e}")
-
-    # send back the image
-    try:
-        line_bot_api.reply_message(event.reply_token, ImageSendMessage(original_content_url=temp_image_path, preview_image_url=temp_image_path))
-    except Exception as e:
-        app.logger.error(f"Failed to send the image: {e}")
+    with open(temp_image_path, 'wb') as fd:
+        for chunk in message_content.iter_content():
+            fd.write(chunk)
+    
+    # Serve the image back to the user via the Flask route
+    image_url = f"{request.url_root}image/{message_id}"
+    
+    image_message = ImageSendMessage(
+        original_content_url=image_url,
+        preview_image_url=image_url
+    )
+    
+    # Send the image back to the user
+    line_bot_api.reply_message(event.reply_token, image_message)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
