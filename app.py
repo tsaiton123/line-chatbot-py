@@ -7,7 +7,7 @@ import os
 from search import google_search , should_search
 import sqlite3
 from flask import send_file
-
+from image_processing import *
 
 app = Flask(__name__)
 
@@ -55,6 +55,9 @@ def callback():
 def serve_image(image_id):
     # Path to the image in the /tmp directory
     image_path = f"/tmp/{image_id}.jpg"
+    # apply image processing
+    output_dir = "/tmp"
+    transform_papers_to_squares(image_path, output_dir)
     
     try:
         return send_file(image_path, mimetype='image/jpeg')
