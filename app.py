@@ -163,7 +163,7 @@ def handle_image_message(event):
     # Ensure the URL is HTTPS and construct image URLs
     image_messages = []
     for i, transformed_image_path in enumerate(transformed_image_paths):
-        image_url = f"https://{request.host}/image/{message_id}_transformed_{i+1}"
+        image_url = f"https://{request.host}/image/transformed_{i+1}"
         image_message = ImageSendMessage(
             original_content_url=image_url,
             preview_image_url=image_url
