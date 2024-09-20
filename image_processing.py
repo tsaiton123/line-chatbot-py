@@ -18,7 +18,11 @@ def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_
     # Find contours in the edge-detected image
     contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    # List to store file paths of the transformed images
+    transformed_image_paths = []
+    
     # Sort contours by area and process each valid quadrilateral
+    valid_count = 0
     for i, contour in enumerate(contours):
         area = cv2.contourArea(contour)
         
@@ -32,7 +36,7 @@ def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_
         
         # Only process contours with four points (quadrilateral)
         if len(approx) == 4:
-            # Check if the contour is convex (to avoid weird non-convex shapes)
+            # Check if the contour is convex
             if not cv2.isContourConvex(approx):
                 continue
             
@@ -62,7 +66,7 @@ def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_
             heightB = np.linalg.norm(tl - bl)
             maxHeight = max(int(heightA), int(heightB))
             
-            # Check aspect ratio to ensure it's not too distorted
+            # Check aspect ratio
             aspect_ratio = float(maxWidth) / float(maxHeight)
             if aspect_ratio < 0.5 or aspect_ratio > 2.0:
                 continue  # Ignore quadrilaterals with strange aspect ratios
@@ -78,9 +82,9 @@ def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_
             M = cv2.getPerspectiveTransform(rect, dst)
             warped = cv2.warpPerspective(original, M, (maxWidth, maxHeight))
             
-            # Save the output image for each quadrilateral
+            # Save each valid quadrilateral to a file in the /tmp directory
             output_image_path = f"{output_dir}/transformed_{i+1}.jpg"
             cv2.imwrite(output_image_path, warped)
-            print(f"Transformed image {i+1} saved to {output_image_path}")
-        else:
-            print(f"Contour {i+1} is not a valid quadrilateral.")
+            transformed_image_paths.append(output_image_path)
+            
+    return transformed_image_paths
