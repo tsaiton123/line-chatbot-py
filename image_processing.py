@@ -83,8 +83,9 @@ def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_
             warped = cv2.warpPerspective(original, M, (maxWidth, maxHeight))
             
             # Save each valid quadrilateral to a file in the /tmp directory
-            output_image_path = f"{output_dir}/transformed_{i+1}.jpg"
+            output_image_path = f"{output_dir}/transformed_{valid_count+1}.jpg"
             cv2.imwrite(output_image_path, warped)
             transformed_image_paths.append(output_image_path)
+            valid_count += 1
             
     return transformed_image_paths
