@@ -171,11 +171,12 @@ def handle_image_message(event):
         image_messages.append(image_message)
 
     if image_messages:
-        # Use `push_message` instead of `reply_message` to avoid token expiration issues
-        line_bot_api.push_message(event.source.user_id, image_messages)
+        # Send all transformed images back to the user
+        line_bot_api.reply_message(event.reply_token, image_messages)
     else:
-        # Use `push_message` instead of `reply_message`
-        line_bot_api.push_message(event.source.user_id, TextSendMessage(text="No valid documents found in the image."))
+        # Send a message if no valid quadrilaterals were found
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="No valid documents found in the image."))
+
 
 
 if __name__ == "__main__":
