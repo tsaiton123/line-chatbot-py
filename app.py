@@ -54,9 +54,11 @@ def callback():
 @app.route('/image/<image_id>', methods=['GET'])
 def serve_image(image_id):
     # Path to the image in the /tmp directory
+    print(os.listdir('/tmp'))  # Debugging line
     image_path = f"/tmp/{image_id}.jpg"
     
     try:
+        print(f"Serving image from: {image_path}")  # Debugging line
         return send_file(image_path, mimetype='image/jpeg')
     except Exception as e:
         app.logger.error(f"Failed to serve image: {e}")
