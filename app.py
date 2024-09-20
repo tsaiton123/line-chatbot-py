@@ -55,9 +55,6 @@ def callback():
 def serve_image(image_id):
     # Path to the image in the /tmp directory
     image_path = f"/tmp/{image_id}.jpg"
-    # apply image processing
-    output_dir = "/tmp"
-    transform_papers_to_squares(image_path, output_dir)
     
     try:
         return send_file(image_path, mimetype='image/jpeg')
@@ -157,16 +154,27 @@ def handle_image_message(event):
         for chunk in message_content.iter_content():
             fd.write(chunk)
     
-    # Ensure the URL is HTTPS
-    image_url = f"https://{request.host}/image/{message_id}"
-
-    image_message = ImageSendMessage(
-        original_content_url=image_url,
-        preview_image_url=image_url
-    )
+    # Process the image to extract quadrilaterals
+    output_dir = "/tmp"
+    transformed_image_paths = transform_papers_to_squares(temp_image_path, output_dir)
     
-    # Send the image back to the user
-    line_bot_api.reply_message(event.reply_token, image_message)
+    # Ensure the URL is HTTPS and construct image URLs
+    image_messages = []
+    for i, transformed_image_path in enumerate(transformed_image_paths):
+        image_url = f"https://{request.host}/image/{message_id}_transformed_{i+1}"
+        image_message = ImageSendMessage(
+            original_content_url=image_url,
+            preview_image_url=image_url
+        )
+        image_messages.append(image_message)
+
+    if image_messages:
+        # Send all transformed images back to the user
+        line_bot_api.reply_message(event.reply_token, image_messages)
+    else:
+        # Send a message if no valid quadrilaterals were found
+        line_bot_api.reply_message(event.reply_token, TextSendMessage(text="No valid documents found in the image."))
+
 
 
 if __name__ == "__main__":
