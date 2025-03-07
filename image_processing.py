@@ -1,91 +1,83 @@
 import cv2
+import easyocr
+import matplotlib.pyplot as plt
+from openai import OpenAI
+import os   
 import numpy as np
+from PIL import Image, ImageDraw, ImageFont
 
-def transform_papers_to_squares(image_path, output_dir, min_area=1000, max_area_ratio=0.9):
-    # Load the image
+def ocr_translate(image_path, output_dir, key):
+
+
+    client = OpenAI(api_key=key)
+
+
     image = cv2.imread(image_path)
-    original = image.copy()
-    image_height, image_width = image.shape[:2]
-    max_area = image_height * image_width * max_area_ratio  # Define max area as a ratio of the image size
-    
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-    # Apply Gaussian blur and edge detection
-    blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    edged = cv2.Canny(blurred, 50, 150)
+    image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-    # Find contours in the edge-detected image
-    contours, _ = cv2.findContours(edged, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # List to store file paths of the transformed images
-    transformed_image_paths = []
-    
-    # Sort contours by area and process each valid quadrilateral
-    valid_count = 0
-    for i, contour in enumerate(contours):
-        area = cv2.contourArea(contour)
-        
-        # Filter based on area
-        if area < min_area or area > max_area:
-            continue  # Ignore too small or too large contours
-        
-        # Approximate the contour to a polygon
-        epsilon = 0.02 * cv2.arcLength(contour, True)
-        approx = cv2.approxPolyDP(contour, epsilon, True)
-        
-        # Only process contours with four points (quadrilateral)
-        if len(approx) == 4:
-            # Check if the contour is convex
-            if not cv2.isContourConvex(approx):
-                continue
-            
-            # Get the corner points of the quadrilateral
-            points = approx.reshape(4, 2)
-            
-            # Create a consistent order of points (top-left, top-right, bottom-right, bottom-left)
-            def order_points(pts):
-                rect = np.zeros((4, 2), dtype="float32")
-                s = pts.sum(axis=1)
-                rect[0] = pts[np.argmin(s)]
-                rect[2] = pts[np.argmax(s)]
-                diff = np.diff(pts, axis=1)
-                rect[1] = pts[np.argmin(diff)]
-                rect[3] = pts[np.argmax(diff)]
-                return rect
-            
-            rect = order_points(points)
-            
-            # Determine the width and height of the new transformed image
-            (tl, tr, br, bl) = rect
-            widthA = np.linalg.norm(br - bl)
-            widthB = np.linalg.norm(tr - tl)
-            maxWidth = max(int(widthA), int(widthB))
-            
-            heightA = np.linalg.norm(tr - br)
-            heightB = np.linalg.norm(tl - bl)
-            maxHeight = max(int(heightA), int(heightB))
-            
-            # Check aspect ratio
-            aspect_ratio = float(maxWidth) / float(maxHeight)
-            if aspect_ratio < 0.5 or aspect_ratio > 2.0:
-                continue  # Ignore quadrilaterals with strange aspect ratios
-            
-            # Define the destination points for the perspective transform
-            dst = np.array([
-                [0, 0],
-                [maxWidth - 1, 0],
-                [maxWidth - 1, maxHeight - 1],
-                [0, maxHeight - 1]], dtype="float32")
-            
-            # Compute the perspective transform matrix and apply it
-            M = cv2.getPerspectiveTransform(rect, dst)
-            warped = cv2.warpPerspective(original, M, (maxWidth, maxHeight))
-            
-            # Save each valid quadrilateral to a file in the /tmp directory
-            output_image_path = f"{output_dir}/transformed_{valid_count+1}.jpg"
-            cv2.imwrite(output_image_path, warped)
-            transformed_image_paths.append(output_image_path)
-            valid_count += 1
-            
-    return transformed_image_paths
+
+    # Initialize EasyOCR reader
+    reader = easyocr.Reader(['en', 'ch_sim'])
+    results = reader.readtext(image_rgb)
+
+    # Extract words with bounding boxes
+    word_bbox_list = []
+    for bbox, text, confidence in results:
+        if confidence > 0.1:
+            word_bbox_list.append({'text': text, 'bbox': bbox})
+            cv2.rectangle(image_rgb, tuple(map(int, bbox[0])), tuple(map(int, bbox[2])), (0, 255, 0), 2)
+            # plt.text(bbox[0][0], bbox[0][1] - 10, text, color='red', fontsize=8, backgroundcolor='white')
+
+
+
+    # Translate text using OpenAI GPT-4
+    for word_info in word_bbox_list:
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Translate the following text into Traditional Chinese."},
+                {"role": "user", "content": word_info['text']}
+            ]
+        )
+        translation = response.choices[0].message.content
+        word_info['translation'] = translation
+
+
+    # # Output translated words with bbox
+    for word_info in word_bbox_list:
+        print(f"Original: {word_info['text']} | Translation: {word_info['translation']} | BBox: {word_info['bbox']}")
+
+
+
+    # Convert to PIL Image for multilingual support
+    image_pil = Image.fromarray(image_rgb)
+    draw = ImageDraw.Draw(image_pil)
+
+    font_path = 'NotoSansCJK-Regular.ttc'
+
+    # Example of dynamic font sizing based on bbox height
+    for word_info in word_bbox_list:
+        bbox = word_info['bbox']
+        pts = np.array(bbox, dtype=np.int32)
+
+        bbox_height = np.linalg.norm(pts[0] - pts[3])
+        font_size = max(int(bbox_height * 0.8), 12)  # ensure minimum font size is readable
+
+        font = ImageFont.truetype(font_path, font_size)
+
+        # Cover original text with white polygon
+        draw.polygon([tuple(pt) for pt in pts], fill='white')
+
+        # Position for translated text
+        x, y = pts[0]
+
+        # Overlay translated text
+        draw.text((x, y - 5), word_info['translation'], font=font, fill='black')
+
+
+    # Convert back to OpenCV format and visualize
+    final_image = np.array(image_pil)
+    output_image_path = f"{output_dir}/transformed.jpg"
+    cv2.imwrite(output_image_path, final_image)
+
+    return output_image_path
