@@ -158,7 +158,8 @@ def handle_image_message(event):
     
     # Process the image to extract quadrilaterals
     output_dir = "/tmp"
-    transformed_image_paths = transform_papers_to_squares(temp_image_path, output_dir)
+    transformed_image_paths = ocr_translate(temp_image_path, output_dir)
+    app.logger.info(f"Transformed images: {transformed_image_paths}")
     
     # Ensure the URL is HTTPS and construct image URLs
     image_messages = []
