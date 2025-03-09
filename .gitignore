@@ -5,3 +5,4 @@ outputs
 img
 remind.txt
 .env
+/linevenv
